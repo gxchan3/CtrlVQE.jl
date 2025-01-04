@@ -208,6 +208,18 @@ function ndrives(::DeviceType)
     error("Not Implemented")
     return 0
 end
+
+"""
+    ncouplingdrives(device::DeviceType)
+
+The number of distinct drive channels for interqubit coupling.
+
+"""
+function ncouplingdrives(::DeviceType)
+    error("Not Implemented")
+    return 0
+end
+
 #= TODO (mid): we could choose to automate from __get__drivesignals =#
 
 """
@@ -251,7 +263,7 @@ function qubithamiltonian(::DeviceType, ā::MatrixList, q::Int; result=nothing)
 end
 
 """
-    staticcoupling(device::DeviceType, ā::MatrixList, q::Int; result=nothing)
+    staticcoupling(device::DeviceType, ā::MatrixList; result=nothing)
 
 The static components of the device Hamiltonian nonlocal to any one qubit.
 
@@ -262,6 +274,40 @@ Optionally, pass a pre-allocated array of compatible type and shape as `result`.
 
 """
 function staticcoupling(::DeviceType, ā::MatrixList; result=nothing)
+    error("Not Implemented")
+    return zeros(eltype(ā), size(ā)[1:end-1])
+end
+
+"""
+    coupling(device::DeviceType, ā::MatrixList; result=nothing)
+
+The nonlocal components of the device Hamiltonian.
+
+This method returns ``∑_<pq> g_<pq> (a'_p a_q + a'_q a_p)``, which is a matrix acting 
+    globally on the physical Hilbert space. The index ``pq`` specifies  
+    the index of the two-qubit coupling of interest  
+
+Optionally, pass a pre-allocated array of compatible type and shape as `result`.
+
+"""
+function couplingoperator(::DeviceType, ā::MatrixList; result=nothing)
+    error("Not Implemented")
+    return zeros(eltype(ā), size(ā)[1:end-1])
+end
+
+"""
+    couplingoperatorwostrengthbyindex(device::DeviceType, ā::MatrixList; result=nothing)
+
+A specific nonlocal component of the device Hamiltonian.
+
+This method returns ``a'_p a_q + a'_q a_p``, which is a matrix acting 
+    globally on the physical Hilbert space. The index ``pq`` specifies  
+    the index of the two-qubit coupling of interest  
+
+Optionally, pass a pre-allocated array of compatible type and shape as `result`.
+
+"""
+function couplingoperatorwostrengthbyindex(::DeviceType, ā::MatrixList, pq::Int; result=nothing)
     error("Not Implemented")
     return zeros(eltype(ā), size(ā)[1:end-1])
 end
@@ -305,6 +351,30 @@ function gradeoperator(::DeviceType, ā::MatrixList, j::Int, t::Real; result=no
     return zeros(eltype(ā), size(ā)[1:end-1])
 end
 
+"""
+    couplinggradeoperator(device::DeviceType, ā::MatrixList, j::Int, t::Real; result=nothing)
+
+The distinct gradient operator indexed by `j` at time `t`.
+
+For `j` > number of local drive, the index `j` specifies the gradient operator of 
+    nonlocal coupling
+
+I have defined the "gradient operator" ``Â_j`` as the Hermitian operator
+    for which the jth gradient signal is ``ϕ_j = ⟨λ|(iÂ_j)|ψ⟩ + h.t.``.
+
+This method is a function of annihilation operators ``a_q`` given by `ā[:,:,q]`,
+    which are matrices acting globally on the physical Hilbert space.
+If `device` is a `LocallyDrivenDevice`,
+    the matrices may also act on a local physical Hilbert space for each individual qubit.
+
+Optionally, pass a pre-allocated array of compatible type and shape as `result`.
+
+"""
+function couplinggradeoperator(::DeviceType, ā::MatrixList, j::Int, t::Real; result=nothing)
+    error("Not Implemented")
+    return zeros(eltype(ā), size(ā)[1:end-1])
+end
+
 
 """
     eltype_localloweringoperator(device::DeviceType)
@@ -339,6 +409,19 @@ The number type of the algebra `ā` is ignored for the purposes of this method.
 
 """
 function eltype_staticcoupling(::DeviceType)
+    error("Not Implemented")
+    return Bool
+end
+
+"""
+    eltype_coupling(device::DeviceType)
+
+The number type of the non-local components of the Hamiltonian for this device.
+
+The number type of the algebra `ā` is ignored for the purposes of this method.
+
+"""
+function eltype_coupling(::DeviceType)
     error("Not Implemented")
     return Bool
 end
@@ -430,6 +513,16 @@ function __get__drivesignals(device::DeviceType{F,FΩ}) where {F,FΩ}
     return Vector{<:TypeSignal{F,FΩ}}[]
 end
 
+"""
+    __get__couplingdrivesignals(device::DeviceType)
+
+A vector of drive signals for interqubit couplings, presumably an attribute of the device object.
+
+"""
+function __get__couplingdrivesignals(device::DeviceType{F,FΩ}) where {F,FΩ}
+    error("Not Implemented")
+    return Vector{<:TypeSignal{F,FΩ}}[]
+end
 
 #= IMPLEMENTED INTERFACE
 
@@ -795,6 +888,13 @@ function Base.eltype(::Operators.Static, device::DeviceType, basis::Bases.BasisT
 end
 
 function Base.eltype(::Operators.Drive, device::DeviceType, basis::Bases.BasisType)
+    return promote_type(
+        eltype_algebra(device, basis),
+        eltype_driveoperator(device),
+    )
+end
+
+function Base.eltype(::Operators.LocalandNonlocalDrive, device::DeviceType, basis::Bases.BasisType)
     return promote_type(
         eltype_algebra(device, basis),
         eltype_driveoperator(device),
@@ -1693,6 +1793,16 @@ function drivesignal(device::DeviceType{F,FΩ}, i::Int) where {F,FΩ}
 end
 
 """
+    couplingdrivesignal(device::DeviceType, i::Int)
+
+The time-dependent signal for interqubit couplings for a given coupling index.
+
+"""
+function couplingdrivesignal(device::DeviceType{F,FΩ}, i::Int) where {F,FΩ}
+    return __get__couplingdrivesignals(device)[i]
+end
+
+"""
     set_drivesignal(device::DeviceType, i::Int, signal::SignalType)
 
 Change the time-dependent signal for a given pulse index.
@@ -1735,6 +1845,14 @@ It's usually trivial to infer the channel index i associated with each gradient 
 
 """
 abstract type LocallyDrivenDevice{F,FΩ} <: DeviceType{F,FΩ} end
+
+"""
+    NonlocallyDrivenDevice
+
+Super-type for device objects whose drive channels act both nonlocally and locally on qubits.
+
+"""
+abstract type NonlocallyDrivenDevice{F,FΩ} <: DeviceType{F,FΩ} end
 
 """
     drivequbit(device, i::Int)
@@ -1794,6 +1912,7 @@ function localdriveoperators(
     return result
 end
 
+
 """
     localdrivepropagators(device[, basis], τ, t; kwargs...)
 
@@ -1832,6 +1951,22 @@ function localdrivepropagators(
     return result
 end
 
+"""
+    drivepropagator(device[, basis], τ, t; kwargs...)
+
+A matrix list `ū`, where `ū[:,:,q]` is the propagator for a local drive term.
+
+# Arguments
+- `device::DeviceType`: which device is being described.
+- `basis::Bases.BasisType`: which basis the operators will be represented in.
+        Defaults to `Bases.OCCUPATION` when omitted.
+- `τ::Real`: the amount to move forward in time by.
+        Note that the propagation is only approximate for time-dependent operators.
+        The smaller `τ` is, the more accurate the approximation.
+- `t::Real`: the time each drive operator is evaluated at.
+
+"""
+
 function propagator(
     op::Operators.Drive,
     device::LocallyDrivenDevice,
@@ -1845,6 +1980,24 @@ function propagator(
     ū = array(F, (m,m,n), LABEL)
     ū = localdrivepropagators(device, basis, τ, op.t; result=ū)
     return LinearAlgebraTools.kron(ū; result=result)
+end
+
+function propagator(
+    op::Operators.LocalandNonlocalDrive,
+    device::NonlocallyDrivenDevice,
+    basis::Bases.LocalBasis,
+    τ::Real;
+    result=nothing,
+)
+    F = LinearAlgebraTools.cis_type(eltype(op, device, basis))
+    m = nlevels(device)
+    n = nqubits(device)
+
+    isnothing(result) && (result = Array{F,2}(undef, m^n, m^n))
+
+    result = localandnonlocaldriveoperator(device, basis, op.t);
+    
+    return LinearAlgebraTools.cis!(result, -τ)
 end
 
 function propagator(
@@ -1878,6 +2031,21 @@ function propagate!(
     ū = array(F, (m,m,n), LABEL)
     ū = localdrivepropagators(device, basis, τ, op.t; result=ū)
     return LinearAlgebraTools.rotate!(ū, ψ)
+end
+
+function propagate!(
+    op::Operators.LocalandNonlocalDrive,
+    device::NonlocallyDrivenDevice,
+    basis::Bases.LocalBasis,
+    τ::Real,
+    ψ::Evolvable,
+)
+    F = LinearAlgebraTools.cis_type(eltype(op, device, basis))
+    m = nlevels(device)
+    n = nqubits(device)
+    u = array(F, (m^2,m^2), LABEL)
+    u .= propagator(op, device, basis, τ)
+    return LinearAlgebraTools.rotate!(u, ψ)
 end
 
 function propagate!(
@@ -1966,4 +2134,105 @@ function braket(
         end
     end
     return LinearAlgebraTools.braket(ψ1, ops, ψ2)
+end
+
+function braket(
+    op::Operators.Gradient,
+    device::NonlocallyDrivenDevice,
+    basis::Bases.LocalBasis,
+    ψ1::AbstractVector,
+    ψ2::AbstractVector,
+)
+
+    F = eltype(op, device, basis)
+
+    m = nlevels(device)
+    n = nqubits(device)
+
+    if op.j <= (2 * Devices.ndrives(device))
+        ā = localalgebra(device, basis)
+        q = gradequbit(device, op.j)
+        ops = array(F, (m,m,n), LABEL)
+        for p in 1:n
+            if p == q
+                gradeoperator(device, ā, op.j, op.t; result=@view(ops[:,:,p]))
+            else
+                ops[:,:,p] .= Matrix(I, m, m)
+            end
+        end
+    else
+        globalizeā = algebra(device, basis)
+        ops = couplinggradeoperator(device, globalizeā, op.j)
+    end
+    return LinearAlgebraTools.braket(ψ1, ops, ψ2)
+end
+"""
+    localdriveoperators(device[, basis], t; kwargs...)
+
+A matrix list `v̄`, where `v̄[:,:,q]` represents a sum of all drives acting on qubit `q`.
+
+# Arguments
+- `device::DeviceType`: which device is being described.
+- `basis::Bases.BasisType`: which basis the operators will be represented in.
+        Defaults to `Bases.OCCUPATION` when omitted.
+- `t::Real`: the time each drive operator is evaluated at.
+
+"""
+
+function localdriveoperators(
+    device::NonlocallyDrivenDevice,
+    basis::Bases.LocalBasis,
+    t::Real;
+    result=nothing,
+)
+    F = eltype(Operators.LocalandNonlocalDrive(t), device, basis)
+    localā = localalgebra(device, basis)
+
+    m = nlevels(device)
+    n = nqubits(device)
+    isnothing(result) && (result = Array{F,3}(undef, m, m, n))
+    result .= 0
+    for i in 1:ndrives(device)
+        q = drivequbit(device, i)
+        result[:,:,q] .+= driveoperator(device, localā, i, t)
+    end
+
+    return result
+end
+
+"""
+    localandnonlocaldriveoperator(device[, basis], t; kwargs...)
+
+A matrix represents sum of drive operator V(t) and interqubit coupling g(t).
+
+# Arguments
+- `device::DeviceType`: which device is being described.
+- `basis::Bases.BasisType`: which basis the operators will be represented in.
+        Defaults to `Bases.OCCUPATION` when omitted.
+- `t::Real`: the time each drive operator is evaluated at.
+
+"""
+
+function localandnonlocaldriveoperator(
+    device::NonlocallyDrivenDevice,
+    basis::Bases.LocalBasis,
+    t::Real;
+    result=nothing,
+)
+    F = LinearAlgebraTools.cis_type(eltype(Operators.LocalandNonlocalDrive(t), device, basis))
+    m = nlevels(device)
+    n = nqubits(device)
+
+    isnothing(result) && (result = Array{F,2}(undef, m^n, m^n))
+
+    globalizeā = algebra(device, basis)
+    result .= F(0.0)
+
+    localdriveoperators = Devices.localdriveoperators(device,basis,t);
+    for q in 1:nqubits(device)
+        result .+= globalize(device,localdriveoperators[:,:,q],q)
+    end
+    result .+= couplingoperator(device, globalizeā, t)
+
+    return result
 end

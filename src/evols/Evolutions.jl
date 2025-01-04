@@ -6,7 +6,7 @@ import ..Integrations, ..Devices
 import ..Bases
 
 import ..Bases: OCCUPATION
-import ..Operators: STATIC, Drive, Gradient
+import ..Operators: STATIC, UNCOUPLED, Drive, LocalandNonlocalDrive, Gradient
 
 import ..TrapezoidalIntegrations: TrapezoidalIntegration
 
@@ -330,3 +330,118 @@ function gradientsignals(
     return result
 end
 
+"""
+Essentially the same as the function `gradientsignals` above with the addition of tunable interqubit coupling
+    the gradientsignal array include the gradient signal of interqubit coupler
+"""
+function tunablecouplergradientsignals(
+    evolution::EvolutionType,
+    device::Devices.DeviceType,
+    args...;
+    kwargs...
+)
+    return tunablecouplergradientsignals(evolution, device, workbasis(evolution), args...; kwargs...)
+end
+
+function tunablecouplergradientsignals(
+    evolution::EvolutionType,
+    device::Devices.DeviceType,
+    basis::Bases.BasisType,
+    grid::TrapezoidalIntegration,
+    ψ0::AbstractVector,
+    O::AbstractMatrix;
+    result=nothing,
+    kwargs...
+)
+    # `O` AND `result` GIVEN AS 2D ARRAYS BUT MUST BE 3D FOR DELEGATION
+    result !== nothing && (result = reshape(result, size(result)..., 1))
+    Ō = reshape(O, size(O)..., 1)
+
+    # PERFORM THE DELEGATION
+    result = tunablecouplergradientsignals(
+        evolution, device, basis, grid, ψ0, Ō;
+        result=result, kwargs...
+    )
+
+    # NOW RESHAPE `result` BACK TO 2D ARRAY
+    result = reshape(result, size(result, 1), size(result, 2))
+    return result
+end
+
+function tunablecouplergradientsignals(
+    evolution::EvolutionType,
+    device::Devices.DeviceType,
+    basis::Bases.BasisType,
+    grid::TrapezoidalIntegration,
+    ψ0::AbstractVector,
+    Ō::LinearAlgebraTools.MatrixList;
+    result=nothing,
+    callback=nothing,
+)
+    # PREPARE TEMPORAL LATTICE
+    r = Integrations.nsteps(grid)
+    τ = Integrations.stepsize(grid)
+    t̄ = Integrations.lattice(grid)
+
+    # PREPARE SIGNAL ARRAYS ϕ̄[i,j,k]
+    if result === nothing
+        F = real(LinearAlgebraTools.cis_type(ψ0))
+        result = Array{F}(undef, r+1, Devices.ngrades(device), size(Ō,3))
+    end
+
+    # PREPARE STATE AND CO-STATES
+    ψTYPE = LinearAlgebraTools.cis_type(ψ0)
+    ψ = array(ψTYPE, size(ψ0), LABEL); ψ .= ψ0
+    ψ = evolve!(evolution, device, basis, grid, ψ)
+
+    λ̄ = array(ψTYPE, (size(ψ0,1), size(Ō,3)), LABEL)
+    for k in axes(Ō,3)
+        λ̄[:,k] .= ψ
+        LinearAlgebraTools.rotate!(@view(Ō[:,:,k]), @view(λ̄[:,k]))
+    end
+
+    # ROTATE INTO OCCUPATION BASIS FOR THE REST OF THIS METHOD
+    if basis != OCCUPATION
+        U = Devices.basisrotation(OCCUPATION, basis, device)
+        ψ = LinearAlgebraTools.rotate!(U, ψ)
+        for k in axes(Ō,3)
+            LinearAlgebraTools.rotate!(U, @view(λ̄[:,k]))
+        end
+    end
+
+    # LAST GRADIENT SIGNALS
+    callback !== nothing && callback(r+1, t̄[r+1], ψ)
+    for k in axes(Ō,3)
+        λ = @view(λ̄[:,k])
+        for j in 1:Devices.ngrades(device)
+            z = Devices.braket(Gradient(j, t̄[end]), device, OCCUPATION, λ, ψ)
+            result[r+1,j,k] = 2 * imag(z)   # ϕ̄[i,j,k] = -𝑖z + 𝑖z̄
+        end
+    end
+
+    # ITERATE OVER TIME
+    for i in reverse(1:r)
+        # COMPLETE THE PREVIOUS TIME-STEP AND START THE NEXT
+        ψ = Devices.propagate!(LocalandNonlocalDrive(t̄[i+1]), device, OCCUPATION, -τ/2, ψ)
+        ψ = Devices.propagate!(UNCOUPLED, device, OCCUPATION, -τ, ψ)
+        ψ = Devices.propagate!(LocalandNonlocalDrive(t̄[i]),   device, OCCUPATION, -τ/2, ψ)
+        for k in axes(Ō,3)
+            λ = @view(λ̄[:,k])
+            Devices.propagate!(LocalandNonlocalDrive(t̄[i+1]), device, OCCUPATION, -τ/2, λ)
+            Devices.propagate!(UNCOUPLED, device, OCCUPATION, -τ, λ)
+            Devices.propagate!(LocalandNonlocalDrive(t̄[i]),   device, OCCUPATION, -τ/2, λ)
+        end
+
+        # CALCULATE GRADIENT SIGNAL BRAKETS
+        callback !== nothing && callback(i, t̄[i], ψ)
+        for k in axes(Ō,3)
+            λ = @view(λ̄[:,k])
+            for j in 1:Devices.ngrades(device)
+                z = Devices.braket(Gradient(j, t̄[i]), device, OCCUPATION, λ, ψ)
+                result[i,j,k] = 2 * imag(z) # ϕ̄[i,j,k] = -𝑖z + 𝑖z̄
+            end
+        end
+    end
+
+    return result
+end

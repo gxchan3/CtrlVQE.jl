@@ -220,6 +220,8 @@ import .Devices: drivesignal, set_drivesignal
 module TransmonDevices; include("devices/TransmonDevices.jl"); end
 import .TransmonDevices: TransmonDevice, FixedFrequencyTransmonDevice
 
+module TunableCouplerDevices; include("devices/TunableCouplerDevices.jl"); end
+import .TunableCouplerDevices: TunableCouplerTransmonDevice
 ##########################################################################################
 #= EVOLUTION ALGORITHMS =#
 
@@ -239,6 +241,9 @@ import .Evolutions: workbasis, evolve, evolve!, gradientsignals
 
 module ToggleEvolutions; include("evols/ToggleEvolutions.jl"); end
 import .ToggleEvolutions: TOGGLE
+
+module TunableCoupleToggleEvolutions; include("evols/TunableCoupleToggleEvolutions.jl"); end
+import .TunableCoupleToggleEvolutions: TUNABLECOUPLETOGGLE
 
 module DirectEvolutions; include("evols/DirectEvolutions.jl"); end
 import .DirectEvolutions: DIRECT
@@ -297,7 +302,7 @@ module BareEnergies; include("costfns/BareEnergies.jl"); end
 import .BareEnergies: BareEnergy
 
 module ProjectedEnergies; include("costfns/ProjectedEnergies.jl"); end
-import .ProjectedEnergies: ProjectedEnergy
+import .ProjectedEnergies: ProjectedEnergy, ProjectedEnergyTunableCoupler
 
 module Normalizations; include("costfns/Normalizations.jl"); end
 import .Normalizations: Normalization
@@ -398,6 +403,55 @@ function Systematic(
 end
 
 """
+    SystematicTunable(TransmonDeviceType, n, pulses; kwargs...)
+
+Standardized constructor for a somewhat realistic transmon device (with tunable coupling), 
+    but of arbitrary size.
+
+This is a linearly coupled device,
+    with uniformly-spaced resonance frequencies,
+    and with all coupling and anharmonicity constants equal for each qubit.
+The actual values of each constant are meant to roughly approximate a typical IBM device.
+
+# Arguments
+- `TransmonDeviceType`: the type of the device to be constructed
+- `n::Int`: the number of qubits in the device
+- `pulses`: a vector of control signals (`Signals.SignalType`), or one to be copied
+
+# Keyword Arguments
+- `m::Int`: the number of transmon levels to include in simulations (defaults to 2)
+- `F`: the float type to use for device parameters (defaults to `Float64`)
+
+"""
+function SystematicTunable(
+    TransmonDeviceType::Type{<:TunableCouplerDevices.AbstractTunableCouplerTransmonDevice},
+    n::Int,
+    drivepulses,
+    couplingpulse;
+    m=2,
+    F=Float64,
+)
+    # INTERPRET SCALAR `pulses` AS A TEMPLATE TO BE COPIED
+    Ω̄ = (drivepulses isa Signals.SignalType) ? [deepcopy(drivepulses) for _ in 1:n] : drivepulses
+    
+    # DEFINE STANDARDIZED PARAMETERS
+    ω0 = F(2π * 4.80)
+    Δω = F(2π * 0.02)
+    δ0 = F(2π * 0.30)
+
+    # ASSEMBLE THE DEVICE
+    ω̄ = collect(ω0 .+ (Δω * (1:n)))
+    δ̄ = fill(δ0, n)
+    quples = [Quple(q,q+1) for q in 1:n-1]
+
+    ḡ = (couplingpulse isa Signals.SignalType) ? [deepcopy(couplingpulse) for _ in 1:n-1] : couplingpulse
+
+    q̄ = 1:n
+    ν̄ = copy(ω̄)
+    return TransmonDeviceType(ω̄, δ̄, quples, q̄, ν̄, Ω̄, ḡ, m)
+end
+
+"""
     FullyTrotterized(signal::Signals.SignalType, T::Real, r::Int)
 
 Break a signal up so that each time-step is parameterized separately.
@@ -429,5 +483,14 @@ function UniformWindowed(signal::Signals.SignalType, T::Real, W::Int)
         starttimes,
     )
 end
+
+"""
+    UniformWindowedSignalStrength(signal::Signals.SignalType, T::Real, , W::Int)
+
+Break a signal up into equal-sized windows. Provide a list of windows' amplitudes
+
+Usually you'll want to use this with constant signals.
+
+"""
 
 end # module CtrlVQE

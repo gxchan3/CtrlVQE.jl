@@ -100,6 +100,16 @@ struct Drive{R<:Real} <: OperatorType
 end
 
 """
+    LocalandNonlocalDrive(t)
+
+The sum of all individual qubit drive terms and all inter-qubit coupling drive terms at a specific time `t`.
+
+"""
+struct LocalandNonlocalDrive{R<:Real} <: OperatorType
+    t::R
+end
+
+"""
     Hamiltonian(t)
 
 The full Hamiltonian at a specific time `t`.
