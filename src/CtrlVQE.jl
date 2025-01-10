@@ -221,7 +221,7 @@ module TransmonDevices; include("devices/TransmonDevices.jl"); end
 import .TransmonDevices: TransmonDevice, FixedFrequencyTransmonDevice
 
 module TunableCouplerDevices; include("devices/TunableCouplerDevices.jl"); end
-import .TunableCouplerDevices: TunableCouplerTransmonDevice
+import .TunableCouplerDevices: TunableCouplerTransmonDevice, FixedFrequencyTunableCouplerTransmonDevice
 ##########################################################################################
 #= EVOLUTION ALGORITHMS =#
 

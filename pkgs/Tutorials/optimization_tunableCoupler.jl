@@ -5,19 +5,24 @@
 import CtrlVQE
 import Random, LinearAlgebra
 import NPZ, Optim, LineSearches, Plots
+import Unicode: ispunct
+import JLD2: load,save
 
-matrix = "H2_sto-3g_singlet_1.5_P-m"    # MATRIX FILE
-T = 5.0 # ns                # TOTAL DURATION OF PULSE
-W = 10                      # NUMBER OF WINDOWS IN EACH PULSE
+dist = 1.5
+mole = "H2"
+# PARENT DIRECTORY
+dir =  "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"                     
+T = 30.0 # ns               # TOTAL DURATION OF PULSE
+W = 30                      # NUMBER OF WINDOWS IN EACH PULSE
 
-r = round(Int,20T)          # NUMBER OF STEPS IN TIME EVOLUTION
+r = 1000                    # NUMBER OF STEPS IN TIME EVOLUTION
 m = 2                       # NUMBER OF LEVELS PER TRANSMON
 
 seed = 9999                 # RANDOM SEED FOR PULSE INTIALIZATION
 init_Ω = 0.0 # 2π GHz       # AMPLITUDE RANGE FOR PULSE INITIALIZATION
 init_φ = 0.0                # PHASE RANGE FOR PULSE INITIALIZATION
 init_Δ = 0.0 # 2π GHz       # FREQUENCY RANGE FOR PULSE INITIALIZATION
-init_g = 0.02                # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
+init_g = 0.002                # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
 
 ΩMAX = 2π * 0.02 # 2π GHz   # LOCAL DRIVE AMPLITUDE BOUNDS
 λΩ = 1.0 # Ha               # PENALTY WEIGHT FOR EXCEEDING AMPLITUDE BOUNDS
@@ -36,10 +41,17 @@ maxiter = 10000             # MAXIMUM NUMBER OF ITERATIONS
 #= SETUP =#
 
 # LOAD MATRIX AND EXTRACT REFERENCE STATES
+matrix = "pyscf_$(mole)_sto-3g_singlet_$(dist)_P-m"      # MATRIX FILE
 H = NPZ.npzread("$(@__DIR__)/matrix/$matrix.npy")
+
+# matrix2 = "H2_sto-3g_singlet_$(dist)_P-m"     # ALTERNATIVE MATRIX FILE
+# H2 = NPZ.npzread("$(@__DIR__)/matrix/$matrix2.npy")
+
+# matrix3 = "h2$(filter(!ispunct, string(dist)))"                     # ALTERNATIVE MATRIX FILE
+# H3 = NPZ.npzread("$(@__DIR__)/matrix/$matrix3.npy")
 n = CtrlVQE.QubitOperators.nqubits(H)
-ψ_REF = CtrlVQE.QubitOperators.reference(H) # REFERENCE STATE
-REF = real(ψ_REF' * H * ψ_REF)              # REFERENCE STATE ENERGY
+ψ_REF = CtrlVQE.QubitOperators.reference(H)         # REFERENCE STATE
+REF = real(ψ_REF' * H * ψ_REF)                      # REFERENCE STATE ENERGY
 
 # IDENTIFY EXACT RESULTS
 Λ, U = LinearAlgebra.eigen(LinearAlgebra.Hermitian(H))
@@ -58,7 +70,8 @@ gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(0.02), T, W)
 # pulse = CtrlVQE.UniformWindowed(CtrlVQE.PolarComplexConstant(0.0, 0.0), T, W)
 
 device = CtrlVQE.SystematicTunable(CtrlVQE.TunableCouplerTransmonDevice, n, pulse, gpulse)
-# device = CtrlVQE.Systematic(CtrlVQE.TransmonDevice, n, pulse)
+# device = CtrlVQE.SystematicTunable(CtrlVQE.FixedFrequencyTunableCouplerTransmonDevice, n, pulse, gpulse)
+
 
 evolution = CtrlVQE.TUNABLECOUPLETOGGLE
 
@@ -80,28 +93,6 @@ xi[ν] .+= init_Δ .* (2 .* rand(length(ν)) .- 1)
 ##########################################################################################
 #= PREPARE OPTIMIZATION OBJECTS =#
 
-# STATIC HAMILTONIAN H0 = ∑ⱼ ωⱼ(aⱼ†)aⱼ - δₗ/2 (aⱼ†)(aⱼ†)aⱼaⱼ + ∑ₐᵦ [gₐᵦ(aₐ†)aᵦ+(aᵦ†)aₐ]
-# H0 = CtrlVQE.Devices.operator(CtrlVQE.STATIC,device,CtrlVQE.OCCUPATION);
-# expiH0T = Matrix{ComplexF64}(undef,size(H));
-
-# function ∂gpqexpjH0t(
-#     op::CtrlVQE.Operators.StaticOperator,
-#     device::CtrlVQE.DeviceType,
-#     basis::CtrlVQE.Bases.BasisType,
-#     λ::Float64,
-#     i::Int64,
-#     t::Real;
-#     result=nothing
-# )
-#     H0 = CtrlVQE.LinearAlgebraTools.cis_type(CtrlVQE.Devices.operator(op, device, basis, :cache))
-#     isnothing(result) && (result=Matrix{CtrlVQE.LinearAlgebraTools.cis_type(H)})
-#     ā = CtrlVQE.Devices.algebra(device, basis)
-
-#     couplingop = CtrlVQE.Devices.couplingoperatorwostrengthbyindex(device2,ā,i)
-#     result = im * λ * t * CtrlVQE.LinearAlgebraTools.cis!(H0,λ * t) * couplingop * CtrlVQE.LinearAlgebraTools.cis!(H0,(1-λ) * t) 
-#     return result
-# end
-
 # ENERGY FUNCTIONS
 O0 = CtrlVQE.QubitOperators.project(H, device)              # MOLECULAR HAMILTONIAN
 ψ0 = CtrlVQE.QubitOperators.project(ψ_REF, device)          # REFERENCE STATE
@@ -109,7 +100,7 @@ O0 = CtrlVQE.QubitOperators.project(H, device)              # MOLECULAR HAMILTON
 fn_energy = CtrlVQE.ProjectedEnergyTunableCoupler(
     evolution, device,
     CtrlVQE.OCCUPATION, CtrlVQE.STATIC,
-    grid, ψ0, O0,
+    grid, ψ0, O0,;
 )
 
 # PENALTY FUNCTIONS
@@ -125,6 +116,14 @@ fn_energy = CtrlVQE.ProjectedEnergyTunableCoupler(
 
 σ  = zeros(L);  σ[1:L] .=    σΩ                           # PENALTY SCALINGS
 fn_penalty = CtrlVQE.SmoothBound(λ, μR, μL, σ)
+
+# CALLBACK FUNCTION
+trace = Dict("energy" => [], "g_norm" => [])
+cb = tr -> begin
+            push!(trace["g_norm"], tr[end].g_norm)
+            push!(trace["energy"], tr[end].value)
+            false
+        end
 
 # OPTIMIZATION FUNCTIONS
 fn_total = CtrlVQE.CompositeCostFunction(fn_energy, fn_penalty)
@@ -142,7 +141,24 @@ options = Optim.Options(
     f_tol = f_tol,
     g_tol = g_tol,
     iterations = maxiter,
+    extended_trace=false,
+    store_trace=true,
+    callback = cb
 )
+
+##########################################################################################
+#= DATA DIRECTORY AND FILE NAME=#
+fn = "trace.$mole.tunableCoupling.W.$W.T.$T.r.$r.initg.$init_g.maxiter.$maxiter.m.$m.dist.$dist.jld2"
+subdir = "$dir/molecular_hamiltonian/tunableCoupling/$(mole)_$(dist)"
+fn_fp = "$subdir/$fn"
+if isdir(subdir)
+    if isfile(fn_fp)
+        trace_load = load(fn_fp)
+        print("Done before: $fn")
+    end
+else
+    mkpath(subdir)
+end
 ##########################################################################################
 #= RUN OPTIMIZATION =#
 
@@ -182,34 +198,40 @@ println("""
 #= PLOT RESULTS =#
 
 # EXTRACT REAL/IMAGINARY PARTS OF THE PULSE
-t = CtrlVQE.lattice(grid)
-CtrlVQE.Parameters.bind(device, xf)             # ENSURE DEVICE USES THE FINAL PARAMETERS
-nD = CtrlVQE.ndrives(device)
-α = Array{Float64}(undef, r+1, nD)
-β = Array{Float64}(undef, r+1, nD)
-for i in 1:nD
-    Ωt = CtrlVQE.Devices.drivesignal(device, i)(t)
-    α[:,i] = real.(Ωt)
-    β[:,i] = imag.(Ωt)
+# t = CtrlVQE.lattice(grid)
+# CtrlVQE.Parameters.bind(device, xf)             # ENSURE DEVICE USES THE FINAL PARAMETERS
+# nD = CtrlVQE.ndrives(device)
+# α = Array{Float64}(undef, r+1, nD)
+# β = Array{Float64}(undef, r+1, nD)
+# for i in 1:nD
+#     Ωt = CtrlVQE.Devices.drivesignal(device, i)(t)
+#     α[:,i] = real.(Ωt)
+#     β[:,i] = imag.(Ωt)
+# end
+
+# # SET UP PLOT OBJECT
+# yMAX = (ΩMAX / 2π) * 1.1        # Divide by 2π to convert angular frequency to frequency.
+#                                 # Multiply by 1.1 to add a little buffer to the plot.
+# plot = Plots.plot(;
+#     xlabel= "Time (ns)",
+#     ylabel= "|Amplitude| (GHz)",
+#     ylims = [-yMAX, yMAX],
+#     legend= :topright,
+# )
+
+# # DUMMY PLOT OBJECTS TO SETUP LEGEND THE WAY WE WANT IT
+# Plots.plot!(plot, [0], [2yMAX], lw=3, ls=:solid, color=:black, label="α")
+# Plots.plot!(plot, [0], [2yMAX], lw=3, ls=:dot, color=:black, label="β")
+
+# # PLOT AMPLITUDES
+# for i in 1:nD
+#     Plots.plot!(plot, t, α[:,i]./2π, lw=3, ls=:solid, color=i, label="Drive $i")
+#     Plots.plot!(plot, t, β[:,i]./2π, lw=3, ls=:dot, color=i, label=false)
+# end
+# display(plot)
+
+trace = merge(trace, Dict("xf" => xf, "Ef" => Ef, "energy error" => εE, "corr energy" => (cE*100)))
+
+if isdir(subdir)
+    save(fn_fp,trace)
 end
-
-# SET UP PLOT OBJECT
-yMAX = (ΩMAX / 2π) * 1.1        # Divide by 2π to convert angular frequency to frequency.
-                                # Multiply by 1.1 to add a little buffer to the plot.
-plot = Plots.plot(;
-    xlabel= "Time (ns)",
-    ylabel= "|Amplitude| (GHz)",
-    ylims = [-yMAX, yMAX],
-    legend= :topright,
-)
-
-# DUMMY PLOT OBJECTS TO SETUP LEGEND THE WAY WE WANT IT
-Plots.plot!(plot, [0], [2yMAX], lw=3, ls=:solid, color=:black, label="α")
-Plots.plot!(plot, [0], [2yMAX], lw=3, ls=:dot, color=:black, label="β")
-
-# PLOT AMPLITUDES
-for i in 1:nD
-    Plots.plot!(plot, t, α[:,i]./2π, lw=3, ls=:solid, color=i, label="Drive $i")
-    Plots.plot!(plot, t, β[:,i]./2π, lw=3, ls=:dot, color=i, label=false)
-end
-display(plot)
