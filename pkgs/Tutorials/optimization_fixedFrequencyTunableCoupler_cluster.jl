@@ -95,6 +95,7 @@ L = length(xi)
 Ω = 1:2*CtrlVQE.Parameters.count(pulse)
 g = 2*CtrlVQE.Parameters.count(pulse)+1:2*CtrlVQE.Parameters.count(pulse)+CtrlVQE.Parameters.count(gpulse)
 φ = []; 
+ν = [];
 
 xi[Ω] .+= init_Ω .* (2 .* rand(length(Ω)) .- 1)
 xi[φ] .+= init_φ .* (2 .* rand(length(φ)) .- 1)
@@ -118,10 +119,10 @@ fn_energy = CtrlVQE.ProjectedEnergyTunableCoupler(
 μR = zeros(L);                                             # PENALTY UPPER BOUNDS
 μR[Ω] .= +ΩMAX                                             # LOCAL DRIVES UPPER BOUNDS
 μR[g] .= +gMAX                                             # NONLOCAL DRIVES UPPER BOUNDS
-μR[ν] .= device.ν̄ .+ ΔMAX                                  # NONLOCAL DRIVES UPPER BOUNDS
+# μR[ν] .= device.ν̄ .+ ΔMAX                                  # NONLOCAL DRIVES UPPER BOUNDS
 μL = zeros(L);                                             # PENALTY LOWER BOUNDS
 μL[Ω] .= -ΩMAX                                             # LOCAL DRIVES LOWER BOUNDS
-μL[ν] .= device.ν̄ .- ΔMAX                                  # LOCAL DRIVES LOWER BOUNDS
+# μL[ν] .= device.ν̄ .- ΔMAX                                  # LOCAL DRIVES LOWER BOUNDS
 μL[g] .= -gMAX                                             # NONLOCAL DRIVES LOWER BOUNDS
 
 σ  = zeros(L);  σ[1:L] .=    σΩ                           # PENALTY SCALINGS
