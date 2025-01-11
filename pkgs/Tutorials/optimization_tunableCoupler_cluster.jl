@@ -79,7 +79,7 @@ grid = CtrlVQE.TemporalLattice(T, r)
 pulse = CtrlVQE.UniformWindowed(CtrlVQE.ComplexConstant(0.0, 0.0), T, W); ΩMAX /= √2
             # NOTE: Re-scale max amplitude so that bounds inscribe the complex circle.
             #       Not needed for real or polar-parameterized amplitudes.
-gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(0.02), T, W)
+gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(2π * init_g), T, W)
 # pulse = CtrlVQE.UniformWindowed(CtrlVQE.PolarComplexConstant(0.0, 0.0), T, W)
 
 device = CtrlVQE.SystematicTunable(CtrlVQE.TunableCouplerTransmonDevice, n, pulse, gpulse)
@@ -92,14 +92,14 @@ Random.seed!(seed)
 xi = CtrlVQE.Parameters.values(device)
 
 L = length(xi)
-Ω = 1:2*CtrlVQE.Parameters.count(pulse)
-g = 2*CtrlVQE.Parameters.count(pulse)+1:2*CtrlVQE.Parameters.count(pulse)+CtrlVQE.Parameters.count(gpulse)
+Ω = 1:CtrlVQE.Devices.ndrives(device)*CtrlVQE.Parameters.count(pulse)
+g = length(Ω) + 1:length(Ω) + CtrlVQE.Parameters.count(gpulse)
 φ = []; 
 ν = 2*CtrlVQE.Parameters.count(pulse)+CtrlVQE.Parameters.count(gpulse)+1:CtrlVQE.Parameters.count(device)
 
 xi[Ω] .+= init_Ω .* (2 .* rand(length(Ω)) .- 1)
 xi[φ] .+= init_φ .* (2 .* rand(length(φ)) .- 1)
-xi[g] .+= init_g .* (2 .* rand(length(g)) .- 1)
+# xi[g] .+= 0
 xi[ν] .+= init_Δ .* (2 .* rand(length(ν)) .- 1)
 
 ##########################################################################################
