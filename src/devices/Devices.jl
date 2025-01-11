@@ -1855,6 +1855,14 @@ Super-type for device objects whose drive channels act both nonlocally and local
 abstract type NonlocallyDrivenDevice{F,FΩ} <: DeviceType{F,FΩ} end
 
 """
+    OnlyNonlocallyDrivenDevice
+
+Super-type for device objects whose drive channels act only nonlocally.
+
+"""
+abstract type OnlyNonlocallyDrivenDevice{F,FΩ} <: DeviceType{F,FΩ} end
+
+"""
     drivequbit(device, i::Int)
 
 Index of the qubit on which channel `i` is applied.
@@ -1984,7 +1992,7 @@ end
 
 function propagator(
     op::Operators.LocalandNonlocalDrive,
-    device::NonlocallyDrivenDevice,
+    device::Union{NonlocallyDrivenDevice,OnlyNonlocallyDrivenDevice},
     basis::Bases.LocalBasis,
     τ::Real;
     result=nothing,
@@ -2035,7 +2043,7 @@ end
 
 function propagate!(
     op::Operators.LocalandNonlocalDrive,
-    device::NonlocallyDrivenDevice,
+    device::Union{NonlocallyDrivenDevice,OnlyNonlocallyDrivenDevice},
     basis::Bases.LocalBasis,
     τ::Real,
     ψ::Evolvable,
@@ -2166,6 +2174,24 @@ function braket(
     end
     return LinearAlgebraTools.braket(ψ1, ops, ψ2)
 end
+
+function braket(
+    op::Operators.Gradient,
+    device::OnlyNonlocallyDrivenDevice,
+    basis::Bases.LocalBasis,
+    ψ1::AbstractVector,
+    ψ2::AbstractVector,
+)
+
+    F = eltype(op, device, basis)
+
+    m = nlevels(device)
+    n = nqubits(device)
+    
+    globalizeā = algebra(device, basis)
+    ops = couplinggradeoperator(device, globalizeā, op.j)
+    return LinearAlgebraTools.braket(ψ1, ops, ψ2)
+end
 """
     localdriveoperators(device[, basis], t; kwargs...)
 
@@ -2232,6 +2258,26 @@ function localandnonlocaldriveoperator(
     for q in 1:nqubits(device)
         result .+= globalize(device,localdriveoperators[:,:,q],q)
     end
+    result .+= couplingoperator(device, globalizeā, t)
+
+    return result
+end
+
+function localandnonlocaldriveoperator(
+    device::OnlyNonlocallyDrivenDevice,
+    basis::Bases.LocalBasis,
+    t::Real;
+    result=nothing,
+)
+    F = LinearAlgebraTools.cis_type(eltype(Operators.LocalandNonlocalDrive(t), device, basis))
+    m = nlevels(device)
+    n = nqubits(device)
+
+    isnothing(result) && (result = Array{F,2}(undef, m^n, m^n))
+
+    globalizeā = algebra(device, basis)
+    result .= F(0.0)
+
     result .+= couplingoperator(device, globalizeā, t)
 
     return result

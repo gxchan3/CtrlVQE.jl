@@ -29,40 +29,40 @@ Therefore, I don't recommend looking too closely to this file as a model to emul
 
 =#
 
-abstract type AbstractTunableCouplerTransmonDevice{F,FΩ} <: Devices.NonlocallyDrivenDevice{F,FΩ} end
+abstract type AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ} <: Devices.OnlyNonlocallyDrivenDevice{F,FΩ} end
 
 # THE INTERFACE TO IMPLEMENT
 
 # Devices.nlevels
 # Devices.nqubits
 # Devices.resonancefrequency
-anharmonicity(::AbstractTunableCouplerTransmonDevice, q::Int)::Real = error("Not Implemented")
+anharmonicity(::AbstractTunableCouplerNoLocalDriveTransmonDevice, q::Int)::Real = error("Not Implemented")
 
-ncouplings(::AbstractTunableCouplerTransmonDevice)::Int = error("Not Implemented")
-couplingpair(::AbstractTunableCouplerTransmonDevice, k::Int)::Quple = error("Not Implemented")
-couplingstrength(::AbstractTunableCouplerTransmonDevice, k::Int)::Real = error("Not Implemented")
+ncouplings(::AbstractTunableCouplerNoLocalDriveTransmonDevice)::Int = error("Not Implemented")
+couplingpair(::AbstractTunableCouplerNoLocalDriveTransmonDevice, k::Int)::Quple = error("Not Implemented")
+couplingstrength(::AbstractTunableCouplerNoLocalDriveTransmonDevice, k::Int)::Real = error("Not Implemented")
 
 # Devices.ndrives
 # Devices.drivequbit
 # Devices.drivefrequency
 # Devices.drivesignal
 
-bindfrequencies(::AbstractTunableCouplerTransmonDevice, ν̄::AbstractVector) = error("Not Implemented")
+bindfrequencies(::AbstractTunableCouplerNoLocalDriveTransmonDevice, ν̄::AbstractVector) = error("Not Implemented")
 
 
 # THE INTERFACE ALREADY IMPLEMENTED
 
-function Devices.ngrades(device::AbstractTunableCouplerTransmonDevice)
-    return 2 * Devices.ndrives(device) + Devices.ncouplingdrives(device)
+function Devices.ngrades(device::AbstractTunableCouplerNoLocalDriveTransmonDevice)
+    return Devices.ncouplingdrives(device)
 end
 
-function Devices.gradequbit(device::AbstractTunableCouplerTransmonDevice, j::Int)
+function Devices.gradequbit(device::AbstractTunableCouplerNoLocalDriveTransmonDevice, j::Int)
     return Devices.drivequbit(device, ((j-1) >> 1) + 1)
 end
 
-Devices.eltype_localloweringoperator(::AbstractTunableCouplerTransmonDevice{F,FΩ}) where {F,FΩ} = F
+Devices.eltype_localloweringoperator(::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}) where {F,FΩ} = F
 function Devices.localloweringoperator(
-    device::AbstractTunableCouplerTransmonDevice{F,FΩ};
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ};
     result=nothing,
 ) where {F,FΩ}
     isnothing(result) && return _cachedloweringoperator(device)
@@ -76,16 +76,16 @@ function Devices.localloweringoperator(
 end
 
 @memoize Dict function _cachedloweringoperator(
-    device::AbstractTunableCouplerTransmonDevice{F,FΩ},
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ},
 ) where {F,FΩ}
     m = Devices.nlevels(device)
     result = Matrix{F}(undef, m, m)
     return Devices.localloweringoperator(device; result=result)
 end
 
-Devices.eltype_qubithamiltonian(::AbstractTunableCouplerTransmonDevice{F,FΩ}) where {F,FΩ} = F
+Devices.eltype_qubithamiltonian(::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}) where {F,FΩ} = F
 function Devices.qubithamiltonian(
-    device::AbstractTunableCouplerTransmonDevice,
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice,
     ā::MatrixList,
     q::Int;
     result=nothing,
@@ -102,9 +102,9 @@ function Devices.qubithamiltonian(
     return result
 end
 
-Devices.eltype_coupling(::AbstractTunableCouplerTransmonDevice{F,FΩ}) where {F,FΩ} = F
+Devices.eltype_coupling(::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}) where {F,FΩ} = F
 function Devices.couplingoperator(
-    device::AbstractTunableCouplerTransmonDevice,
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice,
     ā::MatrixList{F},
     t::Real;
     result=nothing,
@@ -126,7 +126,7 @@ function Devices.couplingoperator(
 end
 
 function Devices.couplingoperatorwostrengthbyindex(
-    device::AbstractTunableCouplerTransmonDevice,
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice,
     ā::MatrixList{F},
     pq::Int64;
     result=nothing,
@@ -146,9 +146,9 @@ function Devices.couplingoperatorwostrengthbyindex(
     return result
 end
 
-Devices.eltype_driveoperator(::AbstractTunableCouplerTransmonDevice{F,FΩ}) where {F,FΩ} = Complex{F}
+Devices.eltype_driveoperator(::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}) where {F,FΩ} = Complex{F}
 function Devices.driveoperator(
-    device::AbstractTunableCouplerTransmonDevice,
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice,
     ā::MatrixList,
     i::Int,
     t::Real;
@@ -175,9 +175,9 @@ function Devices.driveoperator(
     return result
 end
 
-Devices.eltype_gradeoperator(::AbstractTunableCouplerTransmonDevice{F,FΩ}) where {F,FΩ} = Complex{F}
+Devices.eltype_gradeoperator(::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}) where {F,FΩ} = Complex{F}
 function Devices.gradeoperator(
-    device::AbstractTunableCouplerTransmonDevice,
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice,
     ā::MatrixList,
     j::Int,
     t::Real;
@@ -200,13 +200,12 @@ function Devices.gradeoperator(
 end
 
 function Devices.couplinggradeoperator(
-    device::AbstractTunableCouplerTransmonDevice,
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice,
     ā::MatrixList,
     j::Int;
     result=nothing,
 )   
-    pq = j - (2 * (Devices.ndrives(device)))
-    p, q = couplingpair(device, pq)
+    p, q = couplingpair(device, j)
 
     if result === nothing
         F = promote_type(eltype(ā))
@@ -225,7 +224,7 @@ function Devices.couplinggradeoperator(
 end
 
 function Devices.gradient(
-    device::AbstractTunableCouplerTransmonDevice{F,FΩ},
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ},
     grid::Integrations.IntegrationType,
     ϕ̄::AbstractMatrix;
     result=nothing,
@@ -245,7 +244,7 @@ end
 
 function gradient_for_signals!(
     result::AbstractVector{F},
-    device::AbstractTunableCouplerTransmonDevice{F,FΩ},
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ},
     grid::Integrations.IntegrationType,
     ϕ̄::AbstractMatrix,
 ) where {F,FΩ}
@@ -290,7 +289,7 @@ end
 
 function gradient_for_frequencies!(
     result::AbstractVector{F},
-    device::AbstractTunableCouplerTransmonDevice{F,FΩ},
+    device::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ},
     grid::Integrations.IntegrationType,
     ϕ̄::AbstractMatrix,
 ) where {F,FΩ}
@@ -312,7 +311,7 @@ function gradient_for_frequencies!(
     return result
 end
 
-function Parameters.count(device::AbstractTunableCouplerTransmonDevice)
+function Parameters.count(device::AbstractTunableCouplerNoLocalDriveTransmonDevice)
     cnt = Devices.ndrives(device)           # NOTE: There are `ndrives` frequencies.
     for i in 1:Devices.ndrives(device)
         cnt += Parameters.count(Devices.drivesignal(device, i))::Int
@@ -324,7 +323,7 @@ function Parameters.count(device::AbstractTunableCouplerTransmonDevice)
     return cnt
 end
 
-function Parameters.names(device::AbstractTunableCouplerTransmonDevice)
+function Parameters.names(device::AbstractTunableCouplerNoLocalDriveTransmonDevice)
     names = []
 
     # STRING TOGETHER PARAMETER NAMES FOR EACH SIGNAL Ω̄[i]
@@ -339,7 +338,7 @@ function Parameters.names(device::AbstractTunableCouplerTransmonDevice)
     return names
 end
 
-function Parameters.values(device::AbstractTunableCouplerTransmonDevice{F,FΩ}) where {F,FΩ}
+function Parameters.values(device::AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}) where {F,FΩ}
     values = F[]
 
     # STRING TOGETHER PARAMETERS FOR EACH SIGNAL Ω̄[i]
@@ -357,7 +356,7 @@ function Parameters.values(device::AbstractTunableCouplerTransmonDevice{F,FΩ}) 
     return values
 end
 
-function Parameters.bind(device::AbstractTunableCouplerTransmonDevice, x̄::AbstractVector{F}) where {F}
+function Parameters.bind(device::AbstractTunableCouplerNoLocalDriveTransmonDevice, x̄::AbstractVector{F}) where {F}
     offset = 0
 
     # BIND PARAMETERS FOR EACH SIGNAL Ω̄[i]
@@ -380,106 +379,8 @@ function Parameters.bind(device::AbstractTunableCouplerTransmonDevice, x̄::Abst
 end
 
 
-
-
-
-
 """
-    TunableCouplerTransmonDevice(ω̄, δ̄, quples, q̄, ν̄, Ω̄, m)
-
-A transmon device, modeling for example IBM's superconducting quantum computers.
-
-Variational parameters include the shape parameters in each pulse, pulse 
-    freqiencies, and the shape parameters of interqubit coupling strengths.
-    
-# Arguments
-- `ω̄`: a vector of angular frequencies specifying the resonance frequency of each qubit.
-- `δ̄`: a vector of angular frequencies specifying the anharmonicity of each qubit.
-
-- `ḡ`: a vector of angular frequencies specifying the strength of each coupling.
-- `quples`: a vector of `Quple` identifying whcih qubits participate in each coupling.
-
-- `q̄`: a vector of indices specifying the target qubit for each drive channel.
-- `ν̄`: a vector of angular frequencies specifying the pulse frequencies for each channel.
-- `Ω̄`: a vector of signals specifying the shape of the pulse for each channel.
-
-- `m`: an integer specifying the number of physical levels to retain for each qubit.
-
-"""
-struct TunableCouplerTransmonDevice{F,FΩ} <: AbstractTunableCouplerTransmonDevice{F,FΩ}
-    # QUBIT LISTS
-    ω̄::Vector{F}
-    δ̄::Vector{F}
-    # COUPLING LISTS
-    quples::Vector{Quple}
-    # DRIVE LISTS
-    q̄::Vector{Int}
-    ν̄::Vector{F}
-    Ω̄::Vector{SignalType{F,FΩ}}
-    ḡ::AbstractVector{<:SignalType{F,F}}
-    # OTHER PARAMETERS
-    m::Int
-
-    function TunableCouplerTransmonDevice(
-        ω̄::AbstractVector{<:Real},
-        δ̄::AbstractVector{<:Real},
-        quples::AbstractVector{Quple},
-        q̄::AbstractVector{Int},
-        ν̄::AbstractVector{<:AbstractFloat},
-        Ω̄::AbstractVector{<:SignalType{F,FΩ}},
-        ḡ::AbstractVector{<:SignalType{F,F}},
-        m::Int,
-    ) where {F,FΩ}
-        # VALIDATE PARALLEL LISTS ARE CONSISTENT SIZE
-        @assert length(ω̄) == length(δ̄) ≥ 1              # NUMBER OF QUBITS
-        @assert length(q̄) == length(ν̄) == length(Ω̄)     # NUMBER OF DRIVES
-
-        # VALIDATE QUBIT INDICES
-        for (p,q) in quples
-            @assert 1 <= p <= length(ω̄)
-            @assert 1 <= q <= length(ω̄)
-        end
-        for q in q̄
-            @assert 1 <= q <= length(ω̄)
-        end
-
-        # VALIDATE THAT THE HILBERT SPACE HAS SOME VOLUME...
-        @assert m ≥ 2
-
-        # STANDARDIZE TYPING
-        return new{F,FΩ}(
-            convert(Vector{F}, ω̄),
-            convert(Vector{F}, δ̄),
-            quples,
-            q̄,
-            convert(Vector{F}, ν̄),
-            [Ω for Ω in Ω̄],
-            [g for g in ḡ],
-            m,
-        )
-    end
-end
-
-Devices.nlevels(device::TunableCouplerTransmonDevice) = device.m
-
-Devices.nqubits(device::TunableCouplerTransmonDevice) = length(device.ω̄)
-Devices.resonancefrequency(device::TunableCouplerTransmonDevice, q::Int) = device.ω̄[q]
-anharmonicity(device::TunableCouplerTransmonDevice, q::Int) = device.δ̄[q]
-
-ncouplings(device::TunableCouplerTransmonDevice) = length(device.quples)
-couplingpair(device::TunableCouplerTransmonDevice, k::Int) = device.quples[k]
-
-Devices.ndrives(device::TunableCouplerTransmonDevice) = length(device.q̄)
-Devices.ncouplingdrives(device::TunableCouplerTransmonDevice) = ncouplings(device)
-Devices.drivequbit(device::TunableCouplerTransmonDevice, i::Int) = device.q̄[i]
-Devices.drivefrequency(device::TunableCouplerTransmonDevice, i::Int) = device.ν̄[i]
-Devices.__get__drivesignals(device::TunableCouplerTransmonDevice) = device.Ω̄
-Devices.__get__couplingdrivesignals(device::TunableCouplerTransmonDevice) = device.ḡ
-
-bindfrequencies(device::TunableCouplerTransmonDevice, ν̄::AbstractVector) = (device.ν̄ .= ν̄)
-
-"""
-    FixedFrequencyTunableCouplerTransmonDevice(ω̄, δ̄, quples, q̄, ν̄, Ω̄, m)
+    FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice(ω̄, δ̄, quples, q̄, ν̄, Ω̄, m)
 
 A transmon device, modeling for example IBM's superconducting quantum computers.
 
@@ -501,7 +402,7 @@ Variational parameters include the shape parameters in each pulse and the
 - `m`: an integer specifying the number of physical levels to retain for each qubit.
 
 """
-struct FixedFrequencyTunableCouplerTransmonDevice{F,FΩ} <: AbstractTunableCouplerTransmonDevice{F,FΩ}
+struct FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice{F,FΩ} <: AbstractTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}
     # QUBIT LISTS
     ω̄::Vector{F}
     δ̄::Vector{F}
@@ -515,7 +416,7 @@ struct FixedFrequencyTunableCouplerTransmonDevice{F,FΩ} <: AbstractTunableCoupl
     # OTHER PARAMETERS
     m::Int
 
-    function FixedFrequencyTunableCouplerTransmonDevice(
+    function FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice(
         ω̄::AbstractVector{<:Real},
         δ̄::AbstractVector{<:Real},
         quples::AbstractVector{Quple},
@@ -555,29 +456,26 @@ struct FixedFrequencyTunableCouplerTransmonDevice{F,FΩ} <: AbstractTunableCoupl
     end
 end
 
-Devices.nlevels(device::FixedFrequencyTunableCouplerTransmonDevice) = device.m
+Devices.nlevels(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice) = device.m
 
-Devices.nqubits(device::FixedFrequencyTunableCouplerTransmonDevice) = length(device.ω̄)
-Devices.resonancefrequency(device::FixedFrequencyTunableCouplerTransmonDevice, q::Int) = device.ω̄[q]
-anharmonicity(device::FixedFrequencyTunableCouplerTransmonDevice, q::Int) = device.δ̄[q]
+Devices.nqubits(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice) = length(device.ω̄)
+Devices.resonancefrequency(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, q::Int) = device.ω̄[q]
+anharmonicity(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, q::Int) = device.δ̄[q]
 
-ncouplings(device::FixedFrequencyTunableCouplerTransmonDevice) = length(device.quples)
-couplingpair(device::FixedFrequencyTunableCouplerTransmonDevice, k::Int) = device.quples[k]
+ncouplings(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice) = length(device.quples)
+couplingpair(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, k::Int) = device.quples[k]
 
-Devices.ndrives(device::FixedFrequencyTunableCouplerTransmonDevice) = length(device.q̄)
-Devices.ncouplingdrives(device::FixedFrequencyTunableCouplerTransmonDevice) = ncouplings(device)
-Devices.drivequbit(device::FixedFrequencyTunableCouplerTransmonDevice, i::Int) = device.q̄[i]
-Devices.drivefrequency(device::FixedFrequencyTunableCouplerTransmonDevice, i::Int) = device.ν̄[i]
-Devices.__get__drivesignals(device::FixedFrequencyTunableCouplerTransmonDevice) = device.Ω̄
-Devices.__get__couplingdrivesignals(device::FixedFrequencyTunableCouplerTransmonDevice) = device.ḡ
+Devices.ndrives(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice) = 0
+Devices.ncouplingdrives(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice) = ncouplings(device)
+Devices.drivequbit(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, i::Int) = device.q̄[i]
+Devices.drivefrequency(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, i::Int) = device.ν̄[i]
+Devices.__get__drivesignals(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice) = []
+Devices.__get__couplingdrivesignals(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice) = device.ḡ
 
-bindfrequencies(device::FixedFrequencyTunableCouplerTransmonDevice, ν̄::AbstractVector) = (device.ν̄ .= ν̄)
+bindfrequencies(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, ν̄::AbstractVector) = (device.ν̄ .= ν̄)
 
-function Parameters.count(device::FixedFrequencyTunableCouplerTransmonDevice)
+function Parameters.count(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice)
     cnt = 0       
-    for i in 1:Devices.ndrives(device)
-        cnt += Parameters.count(Devices.drivesignal(device, i))::Int
-    end
 
     for i in 1:Devices.ncouplingdrives(device)
         cnt += Parameters.count(Devices.couplingdrivesignal(device, i))::Int
@@ -585,7 +483,7 @@ function Parameters.count(device::FixedFrequencyTunableCouplerTransmonDevice)
     return cnt
 end
 
-function Parameters.names(device::FixedFrequencyTunableCouplerTransmonDevice)
+function Parameters.names(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice)
     names = []
 
     # STRING TOGETHER PARAMETER NAMES FOR EACH SIGNAL Ω̄[i]
@@ -598,14 +496,8 @@ function Parameters.names(device::FixedFrequencyTunableCouplerTransmonDevice)
     return names
 end
 
-function Parameters.values(device::FixedFrequencyTunableCouplerTransmonDevice{F,FΩ}) where {F,FΩ}
+function Parameters.values(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice{F,FΩ}) where {F,FΩ}
     values = F[]
-
-    # STRING TOGETHER PARAMETERS FOR EACH SIGNAL Ω̄[i]
-    for i in 1:Devices.ndrives(device)
-        Ω = Devices.drivesignal(device, i)
-        append!(values, Parameters.values(Ω)::Vector{F})
-    end
 
     for pq in 1:ncouplings(device)
         g = Devices.couplingdrivesignal(device,pq)
@@ -614,16 +506,8 @@ function Parameters.values(device::FixedFrequencyTunableCouplerTransmonDevice{F,
     return values
 end
 
-function Parameters.bind(device::FixedFrequencyTunableCouplerTransmonDevice, x̄::AbstractVector{F}) where {F}
+function Parameters.bind(device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, x̄::AbstractVector{F}) where {F}
     offset = 0
-
-    # BIND PARAMETERS FOR EACH SIGNAL Ω̄[i]
-    for i in 1:Devices.ndrives(device)
-        Ω = Devices.drivesignal(device, i)
-        L = Parameters.count(Ω)::Int
-        Parameters.bind(Ω, x̄[offset+1:offset+L])
-        offset += L
-    end
 
     for i in 1:Devices.ncouplingdrives(device)
         g = Devices.couplingdrivesignal(device, i)
@@ -634,7 +518,7 @@ function Parameters.bind(device::FixedFrequencyTunableCouplerTransmonDevice, x̄
 end
 
 function Devices.gradient(
-    device::FixedFrequencyTunableCouplerTransmonDevice{F,FΩ},
+    device::FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice{F,FΩ},
     grid::Integrations.IntegrationType,
     ϕ̄::AbstractMatrix;
     result=nothing,

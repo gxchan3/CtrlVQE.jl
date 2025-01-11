@@ -4,38 +4,50 @@
 #= PREAMBLE =#
 import CtrlVQE
 import Random, LinearAlgebra
-import NPZ, Optim, LineSearches, Plots
+import NPZ, Optim, LineSearches
 import Unicode: ispunct
 import JLD2: load,save
 
-dist = 1.5
-mole = "H2"
+global seedStr = ARGS[1]
+global distStr = ARGS[2]
+global TStr = ARGS[3]
+global moleStr = ARGS[4]
+global WStr = ARGS[5]
+global rStr = ARGS[6]
+global initgStr = ARGS[7]
+global maxiterStr = ARGS[8]
+global dirStr = ARGS[9]
+
+println("args: 1: $seedStr, 2: $distStr, 3: $TStr, 4: $moleStr, 5: $WStr, 6: $rStr, 7: $initgStr, 8: $maxiterStr, 9: $dirStr")
+
+dist = parse(Float64, distStr)/10
+mole = moleStr
 # PARENT DIRECTORY
-dir =  "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"                     
-T = 30.0 # ns               # TOTAL DURATION OF PULSE
-W = 30                      # NUMBER OF WINDOWS IN EACH PULSE
+dir =  dirStr         
+T = parse(Float64, TStr) # ns           # TOTAL DURATION OF PULSE
+W = parse(Int64, WStr)                  # NUMBER OF WINDOWS IN EACH PULSE
 
-r = 1000                    # NUMBER OF STEPS IN TIME EVOLUTION
-m = 2                       # NUMBER OF LEVELS PER TRANSMON
+r = parse(Int64,rStr)                   # NUMBER OF STEPS IN TIME EVOLUTION
+m = 2                                   # NUMBER OF LEVELS PER TRANSMON
 
-seed = 9999                 # RANDOM SEED FOR PULSE INTIALIZATION
-init_Ω = 0.0 # 2π GHz       # AMPLITUDE RANGE FOR PULSE INITIALIZATION
-init_φ = 0.0                # PHASE RANGE FOR PULSE INITIALIZATION
-init_Δ = 0.0 # 2π GHz       # FREQUENCY RANGE FOR PULSE INITIALIZATION
-init_g = 0.002                # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
+seed = parse(Int64,seedStr)             # RANDOM SEED FOR PULSE INTIALIZATION
+init_Ω = 0.0 # 2π GHz                   # AMPLITUDE RANGE FOR PULSE INITIALIZATION
+init_φ = 0.0                            # PHASE RANGE FOR PULSE INITIALIZATION
+init_Δ = 0.0 # 2π GHz                   # FREQUENCY RANGE FOR PULSE INITIALIZATION
+init_g = 2π * parse(Float64,initgStr)   # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
 
-ΩMAX = 2π * 0.02 # 2π GHz   # LOCAL DRIVE AMPLITUDE BOUNDS
-λΩ = 1.0 # Ha               # PENALTY WEIGHT FOR EXCEEDING AMPLITUDE BOUNDS
-σΩ = ΩMAX                   # PENALTY STEEPNESS FOR EXCEEDING AMPLITUDE BOUNDS
-gMAX = 2π * 0.02            # NONLOCAL DRIVE AMPLITUDE BOUNDS
+ΩMAX = 2π * 0.02 # 2π GHz               # LOCAL DRIVE AMPLITUDE BOUNDS
+λΩ = 1.0 # Ha                           # PENALTY WEIGHT FOR EXCEEDING AMPLITUDE BOUNDS
+σΩ = ΩMAX                               # PENALTY STEEPNESS FOR EXCEEDING AMPLITUDE BOUNDS
+gMAX = 2π * 0.02                        # NONLOCAL DRIVE AMPLITUDE BOUNDS
 
-ΔMAX = 2π * 1.00 # 2π GHz   # FREQUENCY BOUNDS
-λΔ = 1.0 # Ha               # PENALTY WEIGHT FOR EXCEEDING FREQUENCY BOUNDS
-σΔ = ΔMAX                   # PENALTY STEEPNESS FOR EXCEEDING FREQUENCY BOUNDS
+ΔMAX = 2π * 1.00 # 2π GHz               # FREQUENCY BOUNDS
+λΔ = 1.0 # Ha                           # PENALTY WEIGHT FOR EXCEEDING FREQUENCY BOUNDS
+σΔ = ΔMAX                               # PENALTY STEEPNESS FOR EXCEEDING FREQUENCY BOUNDS
 
-f_tol = 0.0                 # TOLERANCE IN FUNCTION EVALUATION
-g_tol = 1e-6                # TOLERANCE IN GRADIENT NORM
-maxiter = 10000             # MAXIMUM NUMBER OF ITERATIONS
+f_tol = 0.0                             # TOLERANCE IN FUNCTION EVALUATION
+g_tol = 1e-6                            # TOLERANCE IN GRADIENT NORM
+maxiter = parse(Int64,maxiterStr)       # MAXIMUM NUMBER OF ITERATIONS
 
 ##########################################################################################
 #= SETUP =#
@@ -66,10 +78,12 @@ grid = CtrlVQE.TemporalLattice(T, r)
 pulse = CtrlVQE.UniformWindowed(CtrlVQE.ComplexConstant(0.0, 0.0), T, W); ΩMAX /= √2
             # NOTE: Re-scale max amplitude so that bounds inscribe the complex circle.
             #       Not needed for real or polar-parameterized amplitudes.
-gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(0.02), T, W)
+# pulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(0.0), T, W)
 # pulse = CtrlVQE.UniformWindowed(CtrlVQE.PolarComplexConstant(0.0, 0.0), T, W)
+gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(init_g), T, W)
 
-device = CtrlVQE.SystematicTunable(CtrlVQE.TunableCouplerTransmonDevice, n, pulse, gpulse)
+device = CtrlVQE.SystematicTunableNoLocalDrive(CtrlVQE.FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, n, pulse, gpulse)
+# device = CtrlVQE.SystematicTunable(CtrlVQE.FixedFrequencyTunableCouplerTransmonDevice, n, pulse, gpulse)
 # device = CtrlVQE.Systematic(CtrlVQE.TransmonDevice, n, pulse)
 
 evolution = CtrlVQE.TUNABLECOUPLETOGGLE
@@ -79,16 +93,15 @@ Random.seed!(seed)
 xi = CtrlVQE.Parameters.values(device)
 
 L = length(xi)
-Ω = 1:2*CtrlVQE.Parameters.count(pulse)
-g = 2*CtrlVQE.Parameters.count(pulse)+1:2*CtrlVQE.Parameters.count(pulse)+CtrlVQE.Parameters.count(gpulse)
+Ω = []
+g = 1 : CtrlVQE.TunableCouplerNoLocalDriveDevices.ncouplings(device) * CtrlVQE.Parameters.count(gpulse)
 φ = []; 
-ν = 2*CtrlVQE.Parameters.count(pulse)+CtrlVQE.Parameters.count(gpulse)+1:CtrlVQE.Parameters.count(device)
+ν = [];
 
 xi[Ω] .+= init_Ω .* (2 .* rand(length(Ω)) .- 1)
 xi[φ] .+= init_φ .* (2 .* rand(length(φ)) .- 1)
-xi[g] .+= init_g .* (2 .* rand(length(g)) .- 1)
+xi[g] .+= init_g 
 xi[ν] .+= init_Δ .* (2 .* rand(length(ν)) .- 1)
-
 ##########################################################################################
 #= PREPARE OPTIMIZATION OBJECTS =#
 
@@ -103,14 +116,14 @@ fn_energy = CtrlVQE.ProjectedEnergyTunableCoupler(
 )
 
 # PENALTY FUNCTIONS
-λ  = zeros(L);  λ[1:L] .= λΩ                              # PENALTY WEIGHTS
-μR = zeros(L);                                             # PENALTY UPPER BOUNDS
-μR[Ω] .= +ΩMAX                                             # LOCAL DRIVES UPPER BOUNDS
-μR[g] .= +gMAX                                             # NONLOCAL DRIVES UPPER BOUNDS
-μR[ν] .= device.ν̄ .+ ΔMAX                                  # NONLOCAL DRIVES UPPER BOUNDS
+λ  = zeros(L);  λ[1:L] .= λΩ                            # PENALTY WEIGHTS
+μR = zeros(L);                                           # PENALTY UPPER BOUNDS
+# μR2[Ω2] .= +ΩMAX                                         # LOCAL DRIVES UPPER BOUNDS
+μR[g] .= +gMAX                                           # NONLOCAL DRIVES UPPER BOUNDS
+# μR[ν] .= device.ν̄ .+ ΔMAX                                # NONLOCAL DRIVES UPPER BOUNDS
 μL = zeros(L);                                             # PENALTY LOWER BOUNDS
-μL[Ω] .= -ΩMAX                                             # LOCAL DRIVES LOWER BOUNDS
-μL[ν] .= device.ν̄ .- ΔMAX                                  # LOCAL DRIVES LOWER BOUNDS
+# μL2[Ω2] .= -ΩMAX                                             # LOCAL DRIVES LOWER BOUNDS
+# μL[ν] .= device.ν̄ .- ΔMAX                                  # LOCAL DRIVES LOWER BOUNDS
 μL[g] .= -gMAX                                             # NONLOCAL DRIVES LOWER BOUNDS
 
 σ  = zeros(L);  σ[1:L] .=    σΩ                           # PENALTY SCALINGS
@@ -147,8 +160,8 @@ options = Optim.Options(
 
 ##########################################################################################
 #= DATA DIRECTORY AND FILE NAME=#
-fn = "trace.$mole.tunableCoupling.W.$W.T.$T.r.$r.initg.$init_g.maxiter.$maxiter.m.$m.dist.$dist.jld2"
-subdir = "$dir/molecular_hamiltonian/tunableCoupling/$(mole)_$(dist)"
+fn = "trace.$mole.tunableCouplingNoLocalDrives.W.$W.T.$T.r.$r.initg.$init_g.maxiter.$maxiter.m.$m.dist.$dist.jld2"
+subdir = "$dir/molecular_hamiltonian/tunableCouplingNoLocalDrives/$(mole)_$(dist)"
 fn_fp = "$subdir/$fn"
 if isdir(subdir)
     if isfile(fn_fp)
