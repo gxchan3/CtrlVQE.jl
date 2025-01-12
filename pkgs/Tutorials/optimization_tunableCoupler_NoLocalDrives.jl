@@ -8,14 +8,14 @@ import NPZ, Optim, LineSearches, Plots
 import Unicode: ispunct
 import JLD2: load,save
 
-dist = 1.5
+dist = 1.6
 mole = "H2"
 # PARENT DIRECTORY
 dir =  "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"                     
-T = 30.0 # ns               # TOTAL DURATION OF PULSE
-W = 30                      # NUMBER OF WINDOWS IN EACH PULSE
+T = 100.0 # ns               # TOTAL DURATION OF PULSE
+W = 200                      # NUMBER OF WINDOWS IN EACH PULSE
 
-r = 1000                    # NUMBER OF STEPS IN TIME EVOLUTION
+r = 10000                    # NUMBER OF STEPS IN TIME EVOLUTION
 m = 2                       # NUMBER OF LEVELS PER TRANSMON
 
 seed = 9999                 # RANDOM SEED FOR PULSE INTIALIZATION

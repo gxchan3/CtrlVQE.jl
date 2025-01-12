@@ -8,20 +8,20 @@ import NPZ, Optim, LineSearches
 import Unicode: ispunct
 import JLD2: load,save
 
-global seedStr = ARGS[1]
-global distStr = ARGS[2]
-global TStr = ARGS[3]
-global moleStr = ARGS[4]
-global WStr = ARGS[5]
-global rStr = ARGS[6]
-global initgStr = ARGS[7]
-global maxiterStr = ARGS[8]
-global dirStr = ARGS[9]
+# global seedStr = ARGS[1]
+# global distStr = ARGS[2]
+# global TStr = ARGS[3]
+# global moleStr = ARGS[4]
+# global WStr = ARGS[5]
+# global rStr = ARGS[6]
+# global initgStr = ARGS[7]
+# global maxiterStr = ARGS[8]
+# global dirStr = ARGS[9]
 
 # global seedStr = "1"
-# global distStr = "18"
+# global distStr = "15"
 # global TStr = "30"
-# global moleStr = "H2"
+# global moleStr = "H4"
 # global WStr = "50"
 # global rStr = "1000"
 # global initgStr = "0.002"
@@ -62,7 +62,7 @@ maxiter = parse(Int64,maxiterStr)       # MAXIMUM NUMBER OF ITERATIONS
 #= SETUP =#
 
 # LOAD MATRIX AND EXTRACT REFERENCE STATES
-matrix = "pyscf_$(mole)_sto-3g_singlet_$(dist)_P-m"      # MATRIX FILE
+matrix = "pennylane_$(mole)_sto-3g_singlet_$(dist)_P-m"      # MATRIX FILE
 H = NPZ.npzread("$(@__DIR__)/matrix/$matrix.npy")
 
 # matrix2 = "H2_sto-3g_singlet_$(dist)_P-m"     # ALTERNATIVE MATRIX FILE
@@ -142,6 +142,7 @@ cb = tr -> begin
 fn_total = CtrlVQE.CompositeCostFunction(fn_energy, fn_penalty)
 f  = CtrlVQE.cost_function(fn_total)
 g! = CtrlVQE.grad_function_inplace(fn_total)
+
 
 # OPTIMIZATION ALGORITHM
 linesearch = LineSearches.MoreThuente()

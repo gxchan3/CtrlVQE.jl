@@ -18,6 +18,16 @@ global initgStr = ARGS[7]
 global maxiterStr = ARGS[8]
 global dirStr = ARGS[9]
 
+# global seedStr = "1"
+# global distStr = "18"
+# global TStr = "30"
+# global moleStr = "H2"
+# global WStr = "50"
+# global rStr = "1000"
+# global initgStr = "0.002"
+# global maxiterStr = "10000"
+# global dirStr = "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"
+
 println("args: 1: $seedStr, 2: $distStr, 3: $TStr, 4: $moleStr, 5: $WStr, 6: $rStr, 7: $initgStr, 8: $maxiterStr, 9: $dirStr")
 
 dist = parse(Float64, distStr)/10
@@ -35,7 +45,7 @@ seed = parse(Int64,seedStr)             # RANDOM SEED FOR PULSE INTIALIZATION
 init_Ω = 0.0 # 2π GHz                   # AMPLITUDE RANGE FOR PULSE INITIALIZATION
 init_φ = 0.0                            # PHASE RANGE FOR PULSE INITIALIZATION
 init_Δ = 0.0 # 2π GHz                   # FREQUENCY RANGE FOR PULSE INITIALIZATION
-init_g = parse(Float64,initgStr) * 2π   # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
+init_g = parse(Float64,initgStr)        # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
 
 ΩMAX = 2π * 0.02 # 2π GHz               # LOCAL DRIVE AMPLITUDE BOUNDS
 λΩ = 1.0 # Ha                           # PENALTY WEIGHT FOR EXCEEDING AMPLITUDE BOUNDS
@@ -79,7 +89,7 @@ grid = CtrlVQE.TemporalLattice(T, r)
 pulse = CtrlVQE.UniformWindowed(CtrlVQE.ComplexConstant(0.0, 0.0), T, W); ΩMAX /= √2
             # NOTE: Re-scale max amplitude so that bounds inscribe the complex circle.
             #       Not needed for real or polar-parameterized amplitudes.
-gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(0.0), T, W)
+gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(init_g * 2π), T, W)
 # pulse = CtrlVQE.UniformWindowed(CtrlVQE.PolarComplexConstant(0.0, 0.0), T, W)
 
 # device = CtrlVQE.SystematicTunable(CtrlVQE.TunableCouplerTransmonDevice, n, pulse, gpulse)
@@ -99,7 +109,7 @@ g = 2*CtrlVQE.Parameters.count(pulse)+1:2*CtrlVQE.Parameters.count(pulse)+CtrlVQ
 
 xi[Ω] .+= init_Ω .* (2 .* rand(length(Ω)) .- 1)
 xi[φ] .+= init_φ .* (2 .* rand(length(φ)) .- 1)
-xi[g] .+= init_g 
+# xi[g] .+= 0 
 
 ##########################################################################################
 #= PREPARE OPTIMIZATION OBJECTS =#
