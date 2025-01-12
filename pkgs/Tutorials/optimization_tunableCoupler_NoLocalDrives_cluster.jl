@@ -8,25 +8,25 @@ import NPZ, Optim, LineSearches
 import Unicode: ispunct
 import JLD2: load,save
 
-global seedStr = ARGS[1]
-global distStr = ARGS[2]
-global TStr = ARGS[3]
-global moleStr = ARGS[4]
-global WStr = ARGS[5]
-global rStr = ARGS[6]
-global initgStr = ARGS[7]
-global maxiterStr = ARGS[8]
-global dirStr = ARGS[9]
+# global seedStr = ARGS[1]
+# global distStr = ARGS[2]
+# global TStr = ARGS[3]
+# global moleStr = ARGS[4]
+# global WStr = ARGS[5]
+# global rStr = ARGS[6]
+# global initgStr = ARGS[7]
+# global maxiterStr = ARGS[8]
+# global dirStr = ARGS[9]
 
-# global seedStr = "1"
-# global distStr = "18"
-# global TStr = "30"
-# global moleStr = "H4"
-# global WStr = "100"
-# global rStr = "1000"
-# global initgStr = "0.002"
-# global maxiterStr = "10000"
-# global dirStr = "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"
+global seedStr = "1"
+global distStr = "18"
+global TStr = "30"
+global moleStr = "H4"
+global WStr = "100"
+global rStr = "1000"
+global initgStr = "0.002"
+global maxiterStr = "10000"
+global dirStr = "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"
 
 println("args: 1: $seedStr, 2: $distStr, 3: $TStr, 4: $moleStr, 5: $WStr, 6: $rStr, 7: $initgStr, 8: $maxiterStr, 9: $dirStr")
 
@@ -104,7 +104,7 @@ xi = CtrlVQE.Parameters.values(device)
 
 L = length(xi)
 Ω = []
-g = 1 : CtrlVQE.TunableCouplerNoLocalDriveDevices.ncouplings(device) * CtrlVQE.Parameters.count(gpulse)
+g = 1 : CtrlVQE.Devices.ncouplingdrives(device) * CtrlVQE.Parameters.count(gpulse)
 φ = []; 
 ν = [];
 
