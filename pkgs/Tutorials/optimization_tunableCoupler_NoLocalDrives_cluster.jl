@@ -18,6 +18,16 @@ global initgStr = ARGS[7]
 global maxiterStr = ARGS[8]
 global dirStr = ARGS[9]
 
+# global seedStr = "1"
+# global distStr = "18"
+# global TStr = "30"
+# global moleStr = "H4"
+# global WStr = "100"
+# global rStr = "1000"
+# global initgStr = "0.002"
+# global maxiterStr = "10000"
+# global dirStr = "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"
+
 println("args: 1: $seedStr, 2: $distStr, 3: $TStr, 4: $moleStr, 5: $WStr, 6: $rStr, 7: $initgStr, 8: $maxiterStr, 9: $dirStr")
 
 dist = parse(Float64, distStr)/10
@@ -34,7 +44,7 @@ seed = parse(Int64,seedStr)             # RANDOM SEED FOR PULSE INTIALIZATION
 init_Ω = 0.0 # 2π GHz                   # AMPLITUDE RANGE FOR PULSE INITIALIZATION
 init_φ = 0.0                            # PHASE RANGE FOR PULSE INITIALIZATION
 init_Δ = 0.0 # 2π GHz                   # FREQUENCY RANGE FOR PULSE INITIALIZATION
-init_g = 2π * parse(Float64,initgStr)   # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
+init_g = parse(Float64,initgStr)   # AMPLITUDE RANGE FOR COUPLING PULSE INITIALIZATION
 
 ΩMAX = 2π * 0.02 # 2π GHz               # LOCAL DRIVE AMPLITUDE BOUNDS
 λΩ = 1.0 # Ha                           # PENALTY WEIGHT FOR EXCEEDING AMPLITUDE BOUNDS
@@ -53,7 +63,7 @@ maxiter = parse(Int64,maxiterStr)       # MAXIMUM NUMBER OF ITERATIONS
 #= SETUP =#
 
 # LOAD MATRIX AND EXTRACT REFERENCE STATES
-matrix = "pyscf_$(mole)_sto-3g_singlet_$(dist)_P-m"      # MATRIX FILE
+matrix = "pennylane_$(mole)_sto-3g_singlet_$(dist)_P-m"      # MATRIX FILE
 H = NPZ.npzread("$(@__DIR__)/matrix/$matrix.npy")
 
 # matrix2 = "H2_sto-3g_singlet_$(dist)_P-m"     # ALTERNATIVE MATRIX FILE
@@ -80,7 +90,7 @@ pulse = CtrlVQE.UniformWindowed(CtrlVQE.ComplexConstant(0.0, 0.0), T, W); ΩMAX 
             #       Not needed for real or polar-parameterized amplitudes.
 # pulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(0.0), T, W)
 # pulse = CtrlVQE.UniformWindowed(CtrlVQE.PolarComplexConstant(0.0, 0.0), T, W)
-gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(init_g), T, W)
+gpulse = CtrlVQE.UniformWindowed(CtrlVQE.Constant(2π * init_g), T, W)
 
 device = CtrlVQE.SystematicTunableNoLocalDrive(CtrlVQE.FixedFrequencyTunableCouplerNoLocalDriveTransmonDevice, n, pulse, gpulse)
 # device = CtrlVQE.SystematicTunable(CtrlVQE.FixedFrequencyTunableCouplerTransmonDevice, n, pulse, gpulse)
