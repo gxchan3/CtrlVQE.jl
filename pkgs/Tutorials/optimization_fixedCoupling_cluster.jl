@@ -8,15 +8,15 @@ import NPZ, Optim, LineSearches
 import Unicode: ispunct
 import JLD2: load,save
 
-# global seedStr = ARGS[1]
-# global distStr = ARGS[2]
-# global TStr = ARGS[3]
-# global moleStr = ARGS[4]
-# global WStr = ARGS[5]
-# global rStr = ARGS[6]
-# global initgStr = ARGS[7]
-# global maxiterStr = ARGS[8]
-# global dirStr = ARGS[9]
+global seedStr = ARGS[1]
+global distStr = ARGS[2]
+global TStr = ARGS[3]
+global moleStr = ARGS[4]
+global WStr = ARGS[5]
+global rStr = ARGS[6]
+global initgStr = ARGS[7]
+global maxiterStr = ARGS[8]
+global dirStr = ARGS[9]
 
 # global seedStr = "1"
 # global distStr = "15"
