@@ -8,25 +8,25 @@ import NPZ, Optim, LineSearches
 import Unicode: ispunct
 import JLD2: load,save
 
-global seedStr = ARGS[1]
-global distStr = ARGS[2]
-global TStr = ARGS[3]
-global moleStr = ARGS[4]
-global WStr = ARGS[5]
-global rStr = ARGS[6]
-global initgStr = ARGS[7]
-global maxiterStr = ARGS[8]
-global dirStr = ARGS[9]
+# global seedStr = ARGS[1]
+# global distStr = ARGS[2]
+# global TStr = ARGS[3]
+# global moleStr = ARGS[4]
+# global WStr = ARGS[5]
+# global rStr = ARGS[6]
+# global initgStr = ARGS[7]
+# global maxiterStr = ARGS[8]
+# global dirStr = ARGS[9]
 
-# global seedStr = "1"
-# global distStr = "18"
-# global TStr = "30"
-# global moleStr = "H2"
-# global WStr = "50"
-# global rStr = "1000"
-# global initgStr = "0.002"
-# global maxiterStr = "10000"
-# global dirStr = "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"
+global seedStr = "1"
+global distStr = "18"
+global TStr = "30"
+global moleStr = "H4"
+global WStr = "100"
+global rStr = "1000"
+global initgStr = "0.002"
+global maxiterStr = "10000"
+global dirStr = "/Users/gxc/Documents/Projects/9_CtrlVQE_TunableCoupler/data"
 
 println("args: 1: $seedStr, 2: $distStr, 3: $TStr, 4: $moleStr, 5: $WStr, 6: $rStr, 7: $initgStr, 8: $maxiterStr, 9: $dirStr")
 
@@ -64,7 +64,7 @@ maxiter = parse(Int64,maxiterStr)       # MAXIMUM NUMBER OF ITERATIONS
 #= SETUP =#
 
 # LOAD MATRIX AND EXTRACT REFERENCE STATES
-matrix = "pyscf_$(mole)_sto-3g_singlet_$(dist)_P-m"      # MATRIX FILE
+matrix = "pennylane_$(mole)_sto-3g_singlet_$(dist)_P-m"      # MATRIX FILE
 H = NPZ.npzread("$(@__DIR__)/matrix/$matrix.npy")
 
 # matrix2 = "H2_sto-3g_singlet_$(dist)_P-m"     # ALTERNATIVE MATRIX FILE
@@ -102,8 +102,8 @@ Random.seed!(seed)
 xi = CtrlVQE.Parameters.values(device)
 
 L = length(xi)
-Ω = 1:2*CtrlVQE.Parameters.count(pulse)
-g = 2*CtrlVQE.Parameters.count(pulse)+1:2*CtrlVQE.Parameters.count(pulse)+CtrlVQE.Parameters.count(gpulse)
+Ω = 1:CtrlVQE.Devices.ndrives(device)*CtrlVQE.Parameters.count(pulse)
+g = length(Ω)+1:length(Ω)+CtrlVQE.Devices.ncouplingdrives(device)*CtrlVQE.Parameters.count(gpulse)
 φ = []; 
 ν = [];
 
