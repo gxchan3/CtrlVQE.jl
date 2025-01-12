@@ -2051,7 +2051,7 @@ function propagate!(
     F = LinearAlgebraTools.cis_type(eltype(op, device, basis))
     m = nlevels(device)
     n = nqubits(device)
-    u = array(F, (m^2,m^2), LABEL)
+    u = array(F, (m^n,m^n), LABEL)
     u .= propagator(op, device, basis, τ)
     return LinearAlgebraTools.rotate!(u, ψ)
 end
